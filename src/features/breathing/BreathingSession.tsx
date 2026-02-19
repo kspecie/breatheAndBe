@@ -75,7 +75,8 @@ function SessionView({
   }
 
   return (
-    <div className="min-h-screen bg-[#2A1F17] flex flex-col select-none">
+    <div className="min-h-dvh bg-[#2A1F17] select-none">
+      <div className="flex flex-col min-h-dvh max-w-[480px] mx-auto">
       {/* Top: progress bar + cycle count */}
       <div className="pt-safe px-6 pt-10 pb-4">
         <ProgressBar
@@ -182,6 +183,7 @@ function SessionView({
           {pattern.name} · {durationMinutes} min
         </p>
       )}
+      </div>
     </div>
   )
 }
