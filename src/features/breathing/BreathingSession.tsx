@@ -96,7 +96,7 @@ function SessionView({
               key="session"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex flex-col items-center gap-8"
+              className="flex flex-col items-center gap-20"
             >
               <BreathingShape
                 phase={timer.phase}
