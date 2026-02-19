@@ -7,7 +7,7 @@ export function AmbientSoundPicker() {
   return (
     <div className="flex flex-col gap-3">
       {/* Sound buttons */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none justify-center">
         {ambientSounds.map((sound) => {
           const isActive = soundId === sound.id
           return (

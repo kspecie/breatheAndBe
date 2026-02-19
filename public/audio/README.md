@@ -1,30 +1,13 @@
-# Ambient Audio Files
+# Ambient Audio
 
-Place open-licensed `.mp3` files here for the ambient sound feature.
+All ambient sounds in Breathe & Be are **synthesized in-browser** using the Web Audio API.
+No audio files are required.
 
-## Required files
-
-| Filename | Sound |
+| Sound | Technique |
 |---|---|
-| `rain.mp3` | Rain ambience |
-| `forest.mp3` | Forest / birds |
-| `ocean.mp3` | Ocean waves |
-| `bowls.mp3` | Tibetan singing bowls |
-
-## Where to source
-
-[Freesound.org](https://freesound.org) — filter by **CC0** licence (public domain, no attribution required).
-
-Search tips:
-- `rain.mp3` → search "rain ambience loop"
-- `forest.mp3` → search "forest birds loop"
-- `ocean.mp3` → search "ocean waves loop"
-- `bowls.mp3` → search "tibetan bowl"
-
-Download as `.mp3`, rename to match the filenames above, and drop them in this folder.
-
-## Notes
-
-- Files are looped seamlessly by Howler.js — choose recordings without abrupt endings
-- Recommended length: 30 seconds – 2 minutes (loops cleanly)
-- Missing files fail gracefully — the app reverts to Silence automatically
+| Silence | No playback |
+| White Noise | Random noise buffer loop |
+| Rain | Lowpass-filtered noise loop |
+| Ocean Waves | Lowpass noise + LFO amplitude modulation |
+| Tibetan Bowls | Harmonic sine waves with exponential decay |
+| Forest | Bandpass-filtered noise + periodic bird chirps |

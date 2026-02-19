@@ -11,10 +11,10 @@ export interface AmbientSound {
 export const ambientSounds: AmbientSound[] = [
   { id: 'silence',     label: 'Silence',       emoji: '🔇', src: null },
   { id: 'white-noise', label: 'White Noise',   emoji: '🌬️', src: null },
-  { id: 'rain',        label: 'Rain',          emoji: '🌧️', src: '/audio/rain.mp3' },
-  { id: 'forest',      label: 'Forest',        emoji: '🌲', src: '/audio/forest.mp3' },
-  { id: 'ocean',       label: 'Ocean Waves',   emoji: '🌊', src: '/audio/ocean.mp3' },
-  { id: 'bowls',       label: 'Tibetan Bowls', emoji: '🎵', src: '/audio/bowls.mp3' },
+  { id: 'rain',        label: 'Rain',          emoji: '🌧️', src: null },
+  { id: 'forest',      label: 'Forest',        emoji: '🌲', src: null },
+  { id: 'ocean',       label: 'Ocean Waves',   emoji: '🌊', src: null },
+  { id: 'bowls',       label: 'Tibetan Bowls', emoji: '🎵', src: null },
 ]
 
 export function getSoundById(id: SoundId): AmbientSound {

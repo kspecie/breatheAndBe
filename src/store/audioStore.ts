@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { Howl } from 'howler'
 import type { SoundId } from '../data/ambientSounds'
 
 const PREFS_KEY = 'breathe-be:preferences'
@@ -35,65 +34,213 @@ function savePrefs(prefs: Prefs) {
 // Audio engine (lives outside Zustand — not serialisable)
 // ---------------------------------------------------------------------------
 
-let howlInstance: Howl | null = null
 let audioCtx: AudioContext | null = null
-let whiteNoiseSource: AudioBufferSourceNode | null = null
-let gainNode: GainNode | null = null
+let masterGain: GainNode | null = null
+let activeSourceNodes: AudioScheduledSourceNode[] = []
+let activeCleanup: (() => void) | null = null
 
-function stopAll() {
-  howlInstance?.stop()
-  howlInstance?.unload()
-  howlInstance = null
-
-  whiteNoiseSource?.stop()
-  whiteNoiseSource = null
-  gainNode = null
-  // Leave audioCtx alive — re-using it avoids iOS autoplay restrictions
+function getCtx(): AudioContext {
+  if (!audioCtx) audioCtx = new AudioContext()
+  if (audioCtx.state === 'suspended') audioCtx.resume()
+  return audioCtx
 }
 
-function startWhiteNoise(volume: number) {
-  if (!audioCtx) {
-    audioCtx = new AudioContext()
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume()
-  }
+function stopAll() {
+  activeCleanup?.()
+  activeCleanup = null
 
-  gainNode = audioCtx.createGain()
-  gainNode.gain.value = volume
-  gainNode.connect(audioCtx.destination)
+  activeSourceNodes.forEach((node) => {
+    try { node.stop() } catch { /* already stopped */ }
+  })
+  activeSourceNodes = []
+  masterGain = null
+}
 
-  const bufferSize = audioCtx.sampleRate * 2
-  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate)
+function setEngineVolume(volume: number) {
+  if (masterGain) masterGain.gain.value = volume
+}
+
+// ---------------------------------------------------------------------------
+// Noise buffer helper (shared by multiple sounds)
+// ---------------------------------------------------------------------------
+
+function makeNoiseBuffer(ctx: AudioContext, seconds: number): AudioBuffer {
+  const bufferSize = ctx.sampleRate * seconds
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
   const data = buffer.getChannelData(0)
   for (let i = 0; i < bufferSize; i++) {
     data[i] = Math.random() * 2 - 1
   }
-
-  whiteNoiseSource = audioCtx.createBufferSource()
-  whiteNoiseSource.buffer = buffer
-  whiteNoiseSource.loop = true
-  whiteNoiseSource.connect(gainNode)
-  whiteNoiseSource.start()
+  return buffer
 }
 
-function startHowl(src: string, volume: number) {
-  howlInstance = new Howl({
-    src: [src],
-    loop: true,
-    volume,
-    html5: false,
-    onloaderror: () => {
-      // File missing — fail silently, store resets to silence
-      useAudioStore.getState()._handleLoadError()
-    },
-  })
-  howlInstance.play()
+function loopingNoiseSource(ctx: AudioContext, seconds: number): AudioBufferSourceNode {
+  const source = ctx.createBufferSource()
+  source.buffer = makeNoiseBuffer(ctx, seconds)
+  source.loop = true
+  return source
 }
 
-function setEngineVolume(volume: number) {
-  howlInstance?.volume(volume)
-  if (gainNode) gainNode.gain.value = volume
+// ---------------------------------------------------------------------------
+// Synthesizers
+// ---------------------------------------------------------------------------
+
+function startWhiteNoise(ctx: AudioContext, gain: GainNode) {
+  const source = loopingNoiseSource(ctx, 2)
+  source.connect(gain)
+  source.start()
+  activeSourceNodes.push(source)
+}
+
+function startRain(ctx: AudioContext, gain: GainNode) {
+  const source = loopingNoiseSource(ctx, 3)
+
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.value = 500
+  filter.Q.value = 0.5
+
+  source.connect(filter)
+  filter.connect(gain)
+  source.start()
+  activeSourceNodes.push(source)
+}
+
+function startOcean(ctx: AudioContext, gain: GainNode) {
+  const source = loopingNoiseSource(ctx, 4)
+
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.value = 350
+  filter.Q.value = 1.0
+
+  // LFO to create wave rhythm (~8s cycle)
+  const lfo = ctx.createOscillator()
+  lfo.type = 'sine'
+  lfo.frequency.value = 0.12
+
+  const lfoGain = ctx.createGain()
+  lfoGain.gain.value = 0.35
+
+  source.connect(filter)
+  filter.connect(gain)
+  lfo.connect(lfoGain)
+  lfoGain.connect(gain.gain)
+
+  source.start()
+  lfo.start()
+  activeSourceNodes.push(source, lfo)
+}
+
+function startBowls(ctx: AudioContext, gain: GainNode) {
+  const fundamentals = [432, 528, 396]
+  let timeoutId: ReturnType<typeof setTimeout>
+
+  function playStrike() {
+    const freq = fundamentals[Math.floor(Math.random() * fundamentals.length)]
+    const harmonics = [1, 2, 3, 4]
+
+    harmonics.forEach((harmonic, i) => {
+      const osc = ctx.createOscillator()
+      const oscGain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = freq * harmonic
+
+      const harmonicVol = gain.gain.value * (0.5 / Math.pow(1.5, i))
+      oscGain.gain.setValueAtTime(harmonicVol, ctx.currentTime)
+      oscGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 4)
+
+      osc.connect(oscGain)
+      oscGain.connect(ctx.destination)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 4.1)
+      activeSourceNodes.push(osc)
+    })
+  }
+
+  function scheduleBowl() {
+    playStrike()
+    const delay = 4000 + Math.random() * 3000
+    timeoutId = setTimeout(scheduleBowl, delay)
+  }
+
+  scheduleBowl()
+  activeCleanup = () => clearTimeout(timeoutId)
+}
+
+function startForest(ctx: AudioContext, gain: GainNode) {
+  // Background: bandpass-filtered noise for rustling leaves / wind
+  const source = loopingNoiseSource(ctx, 3)
+
+  const filter = ctx.createBiquadFilter()
+  filter.type = 'bandpass'
+  filter.frequency.value = 800
+  filter.Q.value = 0.3
+
+  const noiseGain = ctx.createGain()
+  noiseGain.gain.value = 0.3
+
+  source.connect(filter)
+  filter.connect(noiseGain)
+  noiseGain.connect(gain)
+  source.start()
+  activeSourceNodes.push(source)
+
+  // Bird chirps: random high-frequency oscillator bursts
+  let timeoutId: ReturnType<typeof setTimeout>
+
+  function scheduleChirp() {
+    const delay = 2000 + Math.random() * 5000
+    timeoutId = setTimeout(() => {
+      if (!audioCtx || audioCtx.state === 'closed') return
+
+      const osc = ctx.createOscillator()
+      const chirpGain = ctx.createGain()
+      osc.type = 'sine'
+
+      const freq = 1200 + Math.random() * 1600
+      osc.frequency.setValueAtTime(freq, ctx.currentTime)
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.3, ctx.currentTime + 0.08)
+      osc.frequency.exponentialRampToValueAtTime(freq, ctx.currentTime + 0.15)
+
+      chirpGain.gain.setValueAtTime(0, ctx.currentTime)
+      chirpGain.gain.linearRampToValueAtTime(gain.gain.value * 0.15, ctx.currentTime + 0.02)
+      chirpGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2)
+
+      osc.connect(chirpGain)
+      chirpGain.connect(ctx.destination)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.3)
+      activeSourceNodes.push(osc)
+
+      scheduleChirp()
+    }, delay)
+  }
+
+  scheduleChirp()
+  activeCleanup = () => clearTimeout(timeoutId)
+}
+
+// ---------------------------------------------------------------------------
+// Dispatcher
+// ---------------------------------------------------------------------------
+
+function startSound(id: SoundId, volume: number) {
+  stopAll()
+  if (id === 'silence') return
+
+  const ctx = getCtx()
+  masterGain = ctx.createGain()
+  masterGain.gain.value = volume
+  masterGain.connect(ctx.destination)
+
+  switch (id) {
+    case 'white-noise': startWhiteNoise(ctx, masterGain); break
+    case 'rain':        startRain(ctx, masterGain);       break
+    case 'ocean':       startOcean(ctx, masterGain);      break
+    case 'bowls':       startBowls(ctx, masterGain);      break
+    case 'forest':      startForest(ctx, masterGain);     break
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -108,7 +255,7 @@ interface AudioState {
   setVolume: (vol: number) => void
   play: () => void
   stop: () => void
-  /** Internal — called when a file fails to load */
+  /** Internal — kept for interface stability */
   _handleLoadError: () => void
 }
 
@@ -148,26 +295,6 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   },
 
   _handleLoadError() {
-    stopAll()
-    set({ soundId: 'silence', isPlaying: false })
-    savePrefs({ ambientSound: 'silence' })
+    // No-op: all sounds are synthesized, load errors can't occur
   },
 }))
-
-function startSound(id: SoundId, volume: number) {
-  stopAll()
-  if (id === 'silence') return
-  if (id === 'white-noise') {
-    startWhiteNoise(volume)
-    return
-  }
-  // File-based sounds
-  const srcMap: Record<string, string> = {
-    rain:   '/audio/rain.mp3',
-    forest: '/audio/forest.mp3',
-    ocean:  '/audio/ocean.mp3',
-    bowls:  '/audio/bowls.mp3',
-  }
-  const src = srcMap[id]
-  if (src) startHowl(src, volume)
-}

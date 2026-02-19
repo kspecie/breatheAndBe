@@ -112,6 +112,8 @@ function SessionView({
               <BreathingShape
                 phase={timer.phase}
                 phaseDuration={timer.phaseDuration}
+                phaseSecondsLeft={timer.phaseSecondsLeft}
+                isRunning={timer.isRunning}
               />
 
               <div className="text-center">
@@ -138,7 +140,10 @@ function SessionView({
       {!timer.isFinished && (
         <div className="px-6 pb-10 flex items-center justify-center gap-6">
           <button
-            onClick={timer.isRunning ? timer.pause : timer.resume}
+            onClick={timer.isRunning
+              ? () => { timer.pause(); audio.stop() }
+              : () => { timer.resume(); audio.play() }
+            }
             className="w-14 h-14 rounded-full bg-[#E8A87C]/20 flex items-center justify-center text-[#E8A87C] hover:bg-[#E8A87C]/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8A87C]"
             aria-label={timer.isRunning ? 'Pause session' : 'Resume session'}
           >
