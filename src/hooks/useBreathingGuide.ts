@@ -2,11 +2,14 @@ import { useEffect, useRef } from 'react'
 import type { BreathingPhase } from './useBreathingTimer'
 
 // ---------------------------------------------------------------------------
-// Pitches — G3 (196 Hz) and D4 (294 Hz): a warm perfect fifth, lower register
+// Note frequencies for arpeggios
 // ---------------------------------------------------------------------------
 
-const LOW_PITCH  = 196.00 // G3 — grounded, warm
-const HIGH_PITCH = 293.66 // D4 — soft, airy
+// Inhale: ascending G3 → A3 → D4
+const INHALE_NOTES = [196.00, 220.00, 293.66]
+
+// Exhale: descending D4 → G3 → D3 (progressively deeper)
+const EXHALE_NOTES = [293.66, 196.00, 146.83]
 
 const isHoldPhase = (phase: BreathingPhase) =>
   phase === 'holdIn' || phase === 'holdOut'
@@ -23,70 +26,88 @@ function getGuideCtx(): AudioContext {
   return guideCtx
 }
 
-// Active nodes
-let activeOsc: OscillatorNode | null = null
-let activeVolumeGain: GainNode | null = null  // separate from envelope — can be updated live
+// Active oscillator nodes — stopped to silence in-flight tones immediately
+let activeOscillators: OscillatorNode[] = []
 
 function stopGuide() {
-  try { activeOsc?.stop() } catch { /* already stopped */ }
-  activeOsc = null
-  activeVolumeGain = null
+  activeOscillators.forEach((osc) => {
+    try { osc.stop() } catch { /* node already stopped */ }
+  })
+  activeOscillators = []
 }
 
-function playPing(ctx: AudioContext, pitch: number, volume: number) {
-  const osc = ctx.createOscillator()
-  const gain = ctx.createGain()
-  osc.type = 'sine'
-  osc.frequency.value = pitch
-  gain.gain.setValueAtTime(volume * 0.45, ctx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2)
-  osc.connect(gain)
-  gain.connect(ctx.destination)
-  osc.start(ctx.currentTime)
-  osc.stop(ctx.currentTime + 1.25)
+// ---------------------------------------------------------------------------
+// Piano-like additive synthesis
+// ---------------------------------------------------------------------------
+
+// Harmonic partials: [frequency multiplier, relative amplitude]
+const HARMONICS: [number, number][] = [
+  [1, 1.00],
+  [2, 0.50],
+  [3, 0.25],
+  [4, 0.12],
+  [5, 0.06],
+]
+
+const DECAY_TIME = 2.2 // seconds — natural piano-like decay length
+
+function playPianoNote(
+  ctx: AudioContext,
+  freq: number,
+  volume: number,
+  when: number
+) {
+  HARMONICS.forEach(([mult, relAmp]) => {
+    const osc = ctx.createOscillator()
+    const gainNode = ctx.createGain()
+
+    osc.type = 'sine'
+    osc.frequency.value = freq * mult
+
+    // Instantaneous strike then exponential decay (percussive piano envelope)
+    const peak = volume * relAmp * 0.28
+    gainNode.gain.setValueAtTime(0, when)
+    gainNode.gain.linearRampToValueAtTime(peak, when + 0.005)
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, when + DECAY_TIME)
+
+    osc.connect(gainNode)
+    gainNode.connect(ctx.destination)
+
+    osc.start(when)
+    osc.stop(when + DECAY_TIME + 0.05)
+
+    activeOscillators.push(osc)
+  })
 }
+
+// ---------------------------------------------------------------------------
+// Schedule arpeggio across a phase
+// ---------------------------------------------------------------------------
+
+function scheduleArpeggio(
+  ctx: AudioContext,
+  notes: number[],
+  phaseDuration: number,
+  volume: number
+) {
+  const spacing = phaseDuration / notes.length
+  notes.forEach((freq, i) => {
+    const when = ctx.currentTime + i * spacing
+    playPianoNote(ctx, freq, volume, when)
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Phase dispatcher
+// ---------------------------------------------------------------------------
 
 function startPhaseSound(phase: BreathingPhase, duration: number, volume: number) {
   stopGuide()
-
-  // Hold phases are silent
   if (isHoldPhase(phase)) return
 
   const ctx = getGuideCtx()
-  const startPitch  = phase === 'inhale' ? LOW_PITCH  : HIGH_PITCH
-  const targetPitch = phase === 'inhale' ? HIGH_PITCH : LOW_PITCH
-
-  // Soft ping at phase boundary
-  playPing(ctx, startPitch, volume)
-
-  const osc = ctx.createOscillator()
-  const envelopeGain = ctx.createGain() // normalized 0 → 1 → 0 shape
-  const volumeGain = ctx.createGain()   // live-updatable level
-
-  osc.type = 'sine'
-  osc.frequency.setValueAtTime(startPitch, ctx.currentTime)
-  osc.frequency.linearRampToValueAtTime(targetPitch, ctx.currentTime + duration)
-
-  // Envelope on a normalized 0–1 scale (volume scaling is handled by volumeGain)
-  const fadeTime = Math.min(0.4, duration * 0.15)
-  envelopeGain.gain.setValueAtTime(0, ctx.currentTime)
-  envelopeGain.gain.linearRampToValueAtTime(1, ctx.currentTime + fadeTime)
-  if (duration > fadeTime * 2) {
-    envelopeGain.gain.setValueAtTime(1, ctx.currentTime + duration - fadeTime)
-  }
-  envelopeGain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration)
-
-  // Volume level — updated directly when the slider moves
-  volumeGain.gain.value = volume * 0.28
-
-  osc.connect(envelopeGain)
-  envelopeGain.connect(volumeGain)
-  volumeGain.connect(ctx.destination)
-  osc.start(ctx.currentTime)
-  osc.stop(ctx.currentTime + duration + 0.05)
-
-  activeOsc = osc
-  activeVolumeGain = volumeGain
+  const notes = phase === 'inhale' ? INHALE_NOTES : EXHALE_NOTES
+  scheduleArpeggio(ctx, notes, duration, volume)
 }
 
 // ---------------------------------------------------------------------------
@@ -110,14 +131,13 @@ export function useBreathingGuide({
   isActive,
   volume,
 }: BreathingGuideOptions) {
-  // Keep a ref so effects can read the latest value without re-running
   const phaseSecondsLeftRef = useRef(phaseSecondsLeft)
   phaseSecondsLeftRef.current = phaseSecondsLeft
 
   const volumeRef = useRef(volume)
   volumeRef.current = volume
 
-  // Start (or restart) sound when phase changes or session resumes
+  // Start arpeggio when phase changes or session resumes
   useEffect(() => {
     if (!isActive || !isRunning) {
       stopGuide()
@@ -128,12 +148,7 @@ export function useBreathingGuide({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, isRunning, isActive])
 
-  // Live volume update — no need to restart the phase
-  useEffect(() => {
-    if (activeVolumeGain) activeVolumeGain.gain.value = volume * 0.28
-  }, [volume])
-
-  // Pause: stop sounds immediately
+  // Pause: silence all in-flight tones immediately
   useEffect(() => {
     if (!isRunning) stopGuide()
   // eslint-disable-next-line react-hooks/exhaustive-deps
