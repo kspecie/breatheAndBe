@@ -25,10 +25,12 @@ function getGuideCtx(): AudioContext {
 
 // Active nodes
 let activeOsc: OscillatorNode | null = null
+let activeVolumeGain: GainNode | null = null  // separate from envelope — can be updated live
 
 function stopGuide() {
   try { activeOsc?.stop() } catch { /* already stopped */ }
   activeOsc = null
+  activeVolumeGain = null
 }
 
 function playPing(ctx: AudioContext, pitch: number, volume: number) {
@@ -58,26 +60,33 @@ function startPhaseSound(phase: BreathingPhase, duration: number, volume: number
   playPing(ctx, startPitch, volume)
 
   const osc = ctx.createOscillator()
-  const gain = ctx.createGain()
+  const envelopeGain = ctx.createGain() // normalized 0 → 1 → 0 shape
+  const volumeGain = ctx.createGain()   // live-updatable level
+
   osc.type = 'sine'
   osc.frequency.setValueAtTime(startPitch, ctx.currentTime)
   osc.frequency.linearRampToValueAtTime(targetPitch, ctx.currentTime + duration)
 
-  // Gain envelope: fade in, hold, fade out
+  // Envelope on a normalized 0–1 scale (volume scaling is handled by volumeGain)
   const fadeTime = Math.min(0.4, duration * 0.15)
-  gain.gain.setValueAtTime(0, ctx.currentTime)
-  gain.gain.linearRampToValueAtTime(volume * 0.28, ctx.currentTime + fadeTime)
+  envelopeGain.gain.setValueAtTime(0, ctx.currentTime)
+  envelopeGain.gain.linearRampToValueAtTime(1, ctx.currentTime + fadeTime)
   if (duration > fadeTime * 2) {
-    gain.gain.setValueAtTime(volume * 0.28, ctx.currentTime + duration - fadeTime)
+    envelopeGain.gain.setValueAtTime(1, ctx.currentTime + duration - fadeTime)
   }
-  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration)
+  envelopeGain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration)
 
-  osc.connect(gain)
-  gain.connect(ctx.destination)
+  // Volume level — updated directly when the slider moves
+  volumeGain.gain.value = volume * 0.28
+
+  osc.connect(envelopeGain)
+  envelopeGain.connect(volumeGain)
+  volumeGain.connect(ctx.destination)
   osc.start(ctx.currentTime)
   osc.stop(ctx.currentTime + duration + 0.05)
 
   activeOsc = osc
+  activeVolumeGain = volumeGain
 }
 
 // ---------------------------------------------------------------------------
@@ -118,6 +127,11 @@ export function useBreathingGuide({
     startPhaseSound(phase, remaining, volumeRef.current)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, isRunning, isActive])
+
+  // Live volume update — no need to restart the phase
+  useEffect(() => {
+    if (activeVolumeGain) activeVolumeGain.gain.value = volume * 0.28
+  }, [volume])
 
   // Pause: stop sounds immediately
   useEffect(() => {

@@ -38,7 +38,7 @@ export function AmbientSoundPicker() {
             type="range"
             min={0}
             max={1}
-            step={0.05}
+            step={0.01}
             value={volume}
             onChange={(e) => setVolume(Number(e.target.value))}
             aria-label="Ambient sound volume"
