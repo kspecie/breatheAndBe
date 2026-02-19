@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Pause, Play, X } from 'lucide-react'
 import { getPatternById } from '../../data/breathingPatterns'
 import { useBreathingTimer } from '../../hooks/useBreathingTimer'
+import { useBreathingGuide } from '../../hooks/useBreathingGuide'
 import { useAudioStore } from '../../store/audioStore'
 import { BreathingShape } from './BreathingShape'
 import { ProgressBar } from '../../components/ProgressBar'
@@ -45,6 +46,15 @@ function SessionView({
   const navigate = useNavigate()
   const timer = useBreathingTimer(pattern, durationMinutes)
   const audio = useAudioStore()
+
+  useBreathingGuide({
+    phase: timer.phase,
+    phaseDuration: timer.phaseDuration,
+    phaseSecondsLeft: timer.phaseSecondsLeft,
+    isRunning: timer.isRunning,
+    isActive: audio.soundId === 'guided' && audio.isPlaying,
+    volume: audio.volume,
+  })
 
   // Start ambient audio when session mounts; stop on unmount
   useEffect(() => {
@@ -155,7 +165,7 @@ function SessionView({
           </button>
 
           <button
-            onClick={timer.end}
+            onClick={() => { timer.end(); audio.stop() }}
             className="w-14 h-14 rounded-full bg-[#8C6E5B]/20 flex items-center justify-center text-[#8C6E5B] hover:bg-[#8C6E5B]/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8C6E5B]"
             aria-label="End session"
           >

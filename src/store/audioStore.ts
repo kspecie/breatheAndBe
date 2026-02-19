@@ -227,7 +227,7 @@ function startForest(ctx: AudioContext, gain: GainNode) {
 
 function startSound(id: SoundId, volume: number) {
   stopAll()
-  if (id === 'silence') return
+  if (id === 'silence' || id === 'guided') return
 
   const ctx = getCtx()
   masterGain = ctx.createGain()
