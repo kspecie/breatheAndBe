@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  /* Breathe & Be design tokens */
+  --color-peach: #E8A87C;
+  --color-cream: #FDF6EC;
+  --color-surface: #FFFFFF;
+  --color-brown-deep: #3D2B1F;
+  --color-brown-muted: #8C6E5B;
+  --color-terracotta: #C47B3A;
+
+  --font-family-sans: 'Nunito', system-ui, sans-serif;
+
+  --border-radius-card: 20px;
+
+  --shadow-warm: 0 4px 24px rgba(196, 123, 58, 0.1);
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: linear-gradient(180deg, #FDF6EC 0%, #F7E0CC 100%);
+  background-attachment: fixed;
+  font-family: 'Nunito', system-ui, sans-serif;
+  color: #3D2B1F;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
