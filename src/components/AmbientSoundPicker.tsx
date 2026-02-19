@@ -32,13 +32,13 @@ export function AmbientSoundPicker() {
 
       {/* Volume slider — only shown when a sound is selected */}
       {soundId !== 'silence' && (
-        <div className="flex items-center gap-3 px-1">
+        <div className="flex items-center gap-3 px-1 max-w-[200px] mx-auto w-full">
           <span className="text-xs text-[#8C6E5B]/60 w-14 shrink-0">Volume</span>
           <input
             type="range"
             min={0}
-            max={1}
-            step={0.01}
+            max={0.5}
+            step={0.005}
             value={volume}
             onChange={(e) => setVolume(Number(e.target.value))}
             aria-label="Ambient sound volume"
@@ -50,7 +50,7 @@ export function AmbientSoundPicker() {
               [&::-webkit-slider-thumb]:bg-[#E8A87C]
               [&::-webkit-slider-track]:rounded-full"
             style={{
-              background: `linear-gradient(to right, #E8A87C ${volume * 100}%, rgba(232,168,124,0.2) ${volume * 100}%)`,
+              background: `linear-gradient(to right, #E8A87C ${volume * 200}%, rgba(232,168,124,0.2) ${volume * 200}%)`,
             }}
           />
         </div>

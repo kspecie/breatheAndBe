@@ -87,139 +87,23 @@ function loopingNoiseSource(ctx: AudioContext, seconds: number): AudioBufferSour
 
 function startWhiteNoise(ctx: AudioContext, gain: GainNode) {
   const source = loopingNoiseSource(ctx, 2)
-  source.connect(gain)
-  source.start()
-  activeSourceNodes.push(source)
-}
 
-function startRain(ctx: AudioContext, gain: GainNode) {
-  const source = loopingNoiseSource(ctx, 3)
-
+  // Aggressive lowpass + pre-gain to keep perceived loudness low and gentle
   const filter = ctx.createBiquadFilter()
   filter.type = 'lowpass'
-  filter.frequency.value = 500
+  filter.frequency.value = 800
   filter.Q.value = 0.5
 
+  const preGain = ctx.createGain()
+  preGain.gain.value = 0.35
+
   source.connect(filter)
-  filter.connect(gain)
+  filter.connect(preGain)
+  preGain.connect(gain)
   source.start()
   activeSourceNodes.push(source)
 }
 
-function startOcean(ctx: AudioContext, gain: GainNode) {
-  const source = loopingNoiseSource(ctx, 4)
-
-  const filter = ctx.createBiquadFilter()
-  filter.type = 'lowpass'
-  filter.frequency.value = 350
-  filter.Q.value = 1.0
-
-  // LFO to create wave rhythm (~8s cycle)
-  const lfo = ctx.createOscillator()
-  lfo.type = 'sine'
-  lfo.frequency.value = 0.12
-
-  const lfoGain = ctx.createGain()
-  lfoGain.gain.value = 0.35
-
-  source.connect(filter)
-  filter.connect(gain)
-  lfo.connect(lfoGain)
-  lfoGain.connect(gain.gain)
-
-  source.start()
-  lfo.start()
-  activeSourceNodes.push(source, lfo)
-}
-
-function startBowls(ctx: AudioContext, gain: GainNode) {
-  const fundamentals = [432, 528, 396]
-  let timeoutId: ReturnType<typeof setTimeout>
-
-  function playStrike() {
-    const freq = fundamentals[Math.floor(Math.random() * fundamentals.length)]
-    const harmonics = [1, 2, 3, 4]
-
-    harmonics.forEach((harmonic, i) => {
-      const osc = ctx.createOscillator()
-      const oscGain = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.value = freq * harmonic
-
-      const harmonicVol = gain.gain.value * (0.5 / Math.pow(1.5, i))
-      oscGain.gain.setValueAtTime(harmonicVol, ctx.currentTime)
-      oscGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 4)
-
-      osc.connect(oscGain)
-      oscGain.connect(ctx.destination)
-      osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 4.1)
-      activeSourceNodes.push(osc)
-    })
-  }
-
-  function scheduleBowl() {
-    playStrike()
-    const delay = 4000 + Math.random() * 3000
-    timeoutId = setTimeout(scheduleBowl, delay)
-  }
-
-  scheduleBowl()
-  activeCleanup = () => clearTimeout(timeoutId)
-}
-
-function startForest(ctx: AudioContext, gain: GainNode) {
-  // Background: bandpass-filtered noise for rustling leaves / wind
-  const source = loopingNoiseSource(ctx, 3)
-
-  const filter = ctx.createBiquadFilter()
-  filter.type = 'bandpass'
-  filter.frequency.value = 800
-  filter.Q.value = 0.3
-
-  const noiseGain = ctx.createGain()
-  noiseGain.gain.value = 0.3
-
-  source.connect(filter)
-  filter.connect(noiseGain)
-  noiseGain.connect(gain)
-  source.start()
-  activeSourceNodes.push(source)
-
-  // Bird chirps: random high-frequency oscillator bursts
-  let timeoutId: ReturnType<typeof setTimeout>
-
-  function scheduleChirp() {
-    const delay = 2000 + Math.random() * 5000
-    timeoutId = setTimeout(() => {
-      if (!audioCtx || audioCtx.state === 'closed') return
-
-      const osc = ctx.createOscillator()
-      const chirpGain = ctx.createGain()
-      osc.type = 'sine'
-
-      const freq = 1200 + Math.random() * 1600
-      osc.frequency.setValueAtTime(freq, ctx.currentTime)
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.3, ctx.currentTime + 0.08)
-      osc.frequency.exponentialRampToValueAtTime(freq, ctx.currentTime + 0.15)
-
-      chirpGain.gain.setValueAtTime(0, ctx.currentTime)
-      chirpGain.gain.linearRampToValueAtTime(gain.gain.value * 0.15, ctx.currentTime + 0.02)
-      chirpGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2)
-
-      osc.connect(chirpGain)
-      chirpGain.connect(ctx.destination)
-      osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.3)
-      activeSourceNodes.push(osc)
-
-      scheduleChirp()
-    }, delay)
-  }
-
-  scheduleChirp()
-  activeCleanup = () => clearTimeout(timeoutId)
-}
 
 // ---------------------------------------------------------------------------
 // Dispatcher
@@ -236,10 +120,6 @@ function startSound(id: SoundId, volume: number) {
 
   switch (id) {
     case 'white-noise': startWhiteNoise(ctx, masterGain); break
-    case 'rain':        startRain(ctx, masterGain);       break
-    case 'ocean':       startOcean(ctx, masterGain);      break
-    case 'bowls':       startBowls(ctx, masterGain);      break
-    case 'forest':      startForest(ctx, masterGain);     break
   }
 }
 
@@ -263,7 +143,7 @@ const prefs = loadPrefs()
 
 export const useAudioStore = create<AudioState>((set, get) => ({
   soundId: prefs.ambientSound ?? 'silence',
-  volume: prefs.volume ?? 0.6,
+  volume: Math.min(prefs.volume ?? 0.25, 0.5),
   isPlaying: false,
 
   setSound(id) {

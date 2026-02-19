@@ -16,10 +16,11 @@ const isHoldPhase = (phase: BreathingPhase) =>
   phase === 'holdIn' || phase === 'holdOut'
 
 // ---------------------------------------------------------------------------
-// Module-level AudioContext (created once on first use)
+// Module-level AudioContext + master gain (created once on first use)
 // ---------------------------------------------------------------------------
 
 let guideCtx: AudioContext | null = null
+let guideMasterGain: GainNode | null = null
 
 function getGuideCtx(): AudioContext {
   if (!guideCtx) guideCtx = new AudioContext()
@@ -27,18 +28,46 @@ function getGuideCtx(): AudioContext {
   return guideCtx
 }
 
-// Active oscillator nodes — stopped to silence in-flight tones immediately
-let activeOscillators: OscillatorNode[] = []
+function getGuideMasterGain(ctx: AudioContext): GainNode {
+  if (!guideMasterGain) {
+    guideMasterGain = ctx.createGain()
+    guideMasterGain.connect(ctx.destination)
+  }
+  return guideMasterGain
+}
 
-function stopGuide() {
+// Called live when volume slider moves — updates immediately mid-phase
+function setGuideVolume(volume: number) {
+  if (guideMasterGain) guideMasterGain.gain.value = volume
+}
+
+// ---------------------------------------------------------------------------
+// Oscillator tracking
+// Two arrays so phase-transition stops don't cut lingering hold notes:
+//   activeOscillators — stopped on each phase change
+//   freeOscillators   — stopped only on a full stop (sound switch / pause / unmount)
+// ---------------------------------------------------------------------------
+
+let activeOscillators: OscillatorNode[] = []
+let freeOscillators: OscillatorNode[] = []
+
+function stopActivePhase() {
   activeOscillators.forEach((osc) => {
-    try { osc.stop() } catch { /* node already stopped */ }
+    try { osc.stop() } catch { /* already stopped */ }
   })
   activeOscillators = []
 }
 
+function stopGuide() {
+  stopActivePhase()
+  freeOscillators.forEach((osc) => {
+    try { osc.stop() } catch { /* already stopped */ }
+  })
+  freeOscillators = []
+}
+
 // ---------------------------------------------------------------------------
-// Synthesis functions
+// Synthesis functions — all route through guideMasterGain for live volume
 // ---------------------------------------------------------------------------
 
 // Harmonic partials: [frequency multiplier, relative amplitude]
@@ -52,11 +81,11 @@ const HARMONICS: [number, number][] = [
 
 const DECAY_TIME = 2.2
 
-// Standard piano note — fast attack, exponential decay
+// Standard piano note — registered in activeOscillators (stopped on phase change)
 function playPianoNote(
   ctx: AudioContext,
   freq: number,
-  volume: number,
+  masterGain: GainNode,
   when: number
 ) {
   HARMONICS.forEach(([mult, relAmp]) => {
@@ -64,26 +93,25 @@ function playPianoNote(
     const gainNode = ctx.createGain()
     osc.type = 'sine'
     osc.frequency.value = freq * mult
-    const peak = volume * relAmp * 0.28
+    const peak = relAmp * 0.28 // volume handled by masterGain
     gainNode.gain.setValueAtTime(0, when)
     gainNode.gain.linearRampToValueAtTime(peak, when + 0.005)
     gainNode.gain.exponentialRampToValueAtTime(0.0001, when + DECAY_TIME)
     osc.connect(gainNode)
-    gainNode.connect(ctx.destination)
+    gainNode.connect(masterGain)
     osc.start(when)
     osc.stop(when + DECAY_TIME + 0.05)
     activeOscillators.push(osc)
   })
 }
 
-// Deep bong note — longer decay, softer attack; used for exhale's final note.
-// Intentionally NOT added to activeOscillators so it rings freely into holdOut.
+// Deep bong note — registered in freeOscillators (rings through holdOut, stopped on full stop)
 const BONG_DECAY_TIME = 3.5
 
 function playBongNote(
   ctx: AudioContext,
   freq: number,
-  volume: number,
+  masterGain: GainNode,
   when: number,
   decayTime: number = BONG_DECAY_TIME
 ) {
@@ -92,26 +120,25 @@ function playBongNote(
     const gainNode = ctx.createGain()
     osc.type = 'sine'
     osc.frequency.value = freq * mult
-    const peak = volume * relAmp * 0.22
+    const peak = relAmp * 0.22
     gainNode.gain.setValueAtTime(0, when)
     gainNode.gain.linearRampToValueAtTime(peak, when + 0.012)
     gainNode.gain.exponentialRampToValueAtTime(0.0001, when + decayTime)
     osc.connect(gainNode)
-    gainNode.connect(ctx.destination)
+    gainNode.connect(masterGain)
     osc.start(when)
     osc.stop(when + decayTime + 0.05)
-    // not pushed to activeOscillators — rings into holdOut naturally
+    freeOscillators.push(osc) // rings into holdOut; stopped on full stop
   })
 }
 
-// Gentle chime — single sine, very soft; intentionally NOT added to activeOscillators
-// so it rings freely through the hold phase rather than being cut off at the transition
+// Gentle chime — registered in freeOscillators (rings through holdIn, stopped on full stop)
 const CHIME_DECAY_TIME = 2.0
 
 function playChimeNote(
   ctx: AudioContext,
   freq: number,
-  volume: number,
+  masterGain: GainNode,
   when: number,
   decayTime: number = CHIME_DECAY_TIME
 ) {
@@ -119,15 +146,15 @@ function playChimeNote(
   const gainNode = ctx.createGain()
   osc.type = 'sine'
   osc.frequency.value = freq
-  const peak = volume * 0.11
+  const peak = 0.11
   gainNode.gain.setValueAtTime(0, when)
   gainNode.gain.linearRampToValueAtTime(peak, when + 0.01)
   gainNode.gain.exponentialRampToValueAtTime(0.0001, when + decayTime)
   osc.connect(gainNode)
-  gainNode.connect(ctx.destination)
+  gainNode.connect(masterGain)
   osc.start(when)
   osc.stop(when + decayTime + 0.05)
-  // not pushed to activeOscillators — rings into hold naturally
+  freeOscillators.push(osc) // rings into holdIn; stopped on full stop
 }
 
 // ---------------------------------------------------------------------------
@@ -136,38 +163,36 @@ function playChimeNote(
 
 function scheduleInhaleArpeggio(
   ctx: AudioContext,
+  masterGain: GainNode,
   phaseDuration: number,
-  volume: number,
   holdInDuration: number
 ) {
   const spacing = phaseDuration / INHALE_NOTES.length
   INHALE_NOTES.forEach((freq, i) => {
-    playPianoNote(ctx, freq, volume, ctx.currentTime + i * spacing)
+    playPianoNote(ctx, freq, masterGain, ctx.currentTime + i * spacing)
   })
   // Soft chime only for patterns with a holdIn — lingers and fades across the hold
   if (holdInDuration > 0) {
-    playChimeNote(ctx, INHALE_TOP_NOTE, volume, ctx.currentTime + phaseDuration, holdInDuration)
+    playChimeNote(ctx, INHALE_TOP_NOTE, masterGain, ctx.currentTime + phaseDuration, holdInDuration)
   }
 }
 
 function scheduleExhaleArpeggio(
   ctx: AudioContext,
+  masterGain: GainNode,
   phaseDuration: number,
-  volume: number,
   holdOutDuration: number
 ) {
   const spacing = phaseDuration / EXHALE_NOTES.length
-  // When there's a holdOut, extend the bong decay to cover the remaining exhale
-  // time plus the full hold — so it fades to silence right as the hold ends
   const bongDecay = holdOutDuration > 0
     ? Math.max(BONG_DECAY_TIME, spacing + holdOutDuration)
     : BONG_DECAY_TIME
   EXHALE_NOTES.forEach((freq, i) => {
     const when = ctx.currentTime + i * spacing
     if (i === EXHALE_NOTES.length - 1) {
-      playBongNote(ctx, freq, volume, when, bongDecay)
+      playBongNote(ctx, freq, masterGain, when, bongDecay)
     } else {
-      playPianoNote(ctx, freq, volume, when)
+      playPianoNote(ctx, freq, masterGain, when)
     }
   })
 }
@@ -183,14 +208,17 @@ function startPhaseSound(
   holdInDuration: number,
   holdOutDuration: number
 ) {
-  stopGuide()
+  stopActivePhase() // only stop regular notes — let lingering hold notes ring
   if (isHoldPhase(phase)) return
 
   const ctx = getGuideCtx()
+  const masterGain = getGuideMasterGain(ctx)
+  masterGain.gain.value = volume
+
   if (phase === 'inhale') {
-    scheduleInhaleArpeggio(ctx, duration, volume, holdInDuration)
+    scheduleInhaleArpeggio(ctx, masterGain, duration, holdInDuration)
   } else {
-    scheduleExhaleArpeggio(ctx, duration, volume, holdOutDuration)
+    scheduleExhaleArpeggio(ctx, masterGain, duration, holdOutDuration)
   }
 }
 
@@ -234,7 +262,7 @@ export function useBreathingGuide({
   // Start arpeggio when phase changes or session resumes
   useEffect(() => {
     if (!isActive || !isRunning) {
-      stopGuide()
+      stopGuide() // full stop — clears free oscillators too
       return
     }
     const remaining = phaseSecondsLeftRef.current || phaseDuration
@@ -242,7 +270,12 @@ export function useBreathingGuide({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, isRunning, isActive])
 
-  // Pause: silence all in-flight tones immediately
+  // Live volume update — takes effect immediately on the master gain
+  useEffect(() => {
+    setGuideVolume(volume)
+  }, [volume])
+
+  // Pause: full stop
   useEffect(() => {
     if (!isRunning) stopGuide()
   // eslint-disable-next-line react-hooks/exhaustive-deps
