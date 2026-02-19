@@ -13,7 +13,7 @@ export function HomePage() {
   const navigate = useNavigate()
 
   return (
-    <div className="flex flex-col gap-6 p-6 pb-8">
+    <div className="flex flex-col gap-6 p-6 pt-32 pb-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-[#3D2B1F]">
