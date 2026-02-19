@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Wind, Sparkles, ChevronRight } from 'lucide-react'
 import { Card } from '../../components/Card'
-import { Badge } from '../../components/Badge'
 
 function getGreeting() {
   const hour = new Date().getHours()
@@ -21,18 +20,6 @@ export function HomePage() {
           {getGreeting()} ✦
         </h1>
         <p className="mt-1 text-[#8C6E5B]">Take a moment for yourself.</p>
-      </div>
-
-      {/* Stats row */}
-      <div className="flex gap-3">
-        <Card className="flex-1 flex items-center justify-center gap-2 px-4 py-3">
-          <span className="text-base">🔥</span>
-          <Badge variant="streak">0 day streak</Badge>
-        </Card>
-        <Card className="flex-1 flex items-center justify-center gap-2 px-4 py-3">
-          <span className="text-base">⏱</span>
-          <Badge variant="default">0 min this week</Badge>
-        </Card>
       </div>
 
       {/* Quick-start cards */}
@@ -67,18 +54,6 @@ export function HomePage() {
             </div>
           </Card>
         </div>
-      </div>
-
-      {/* Recent sessions */}
-      <div>
-        <h2 className="text-sm font-semibold text-[#8C6E5B] uppercase tracking-wider mb-3">
-          Continue where you left off
-        </h2>
-        <Card className="px-4 py-6 flex items-center justify-center">
-          <p className="text-sm text-[#8C6E5B] italic">
-            Your completed sessions will appear here.
-          </p>
-        </Card>
       </div>
 
       {/* Medical disclaimer */}

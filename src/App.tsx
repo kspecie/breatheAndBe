@@ -5,7 +5,8 @@ import { BreathingLibrary } from './features/breathing/BreathingLibrary'
 import { PatternDetail } from './features/breathing/PatternDetail'
 import { BreathingSession } from './features/breathing/BreathingSession'
 import { MeditationLibrary } from './features/meditation/MeditationLibrary'
-import { HistoryPage } from './features/history/HistoryPage'
+import { MeditationDetail } from './features/meditation/MeditationDetail'
+import { MeditationSession } from './features/meditation/MeditationSession'
 
 export default function App() {
   return (
@@ -17,13 +18,17 @@ export default function App() {
           <Route path="breathe" element={<BreathingLibrary />} />
           <Route path="breathe/:patternId" element={<PatternDetail />} />
           <Route path="meditate" element={<MeditationLibrary />} />
-          <Route path="history" element={<HistoryPage />} />
+          <Route path="meditate/:meditationId" element={<MeditationDetail />} />
         </Route>
 
         {/* Immersive session routes — no bottom nav */}
         <Route
           path="breathe/session/:patternId"
           element={<BreathingSession />}
+        />
+        <Route
+          path="meditate/session/:meditationId"
+          element={<MeditationSession />}
         />
       </Routes>
     </BrowserRouter>

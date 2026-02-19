@@ -17,10 +17,10 @@ export interface BreathingPattern {
 export interface Meditation {
   id: string
   title: string
-  category: 'sleep' | 'anxiety' | 'morning' | 'body-scan' | 'self-compassion'
+  category: 'sleep' | 'stress' | 'focus' | 'morning' | 'body-scan'
   durationMinutes: number
   description: string
-  paragraphs: { text: string; durationSeconds: number }[]
+  paragraphs: { text: string; durationSeconds: number; label?: string }[]
 }
 
 // Session history entry
