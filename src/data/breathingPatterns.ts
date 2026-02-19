@@ -28,15 +28,15 @@ export const breathingPatterns: BreathingPattern[] = [
     benefit: 'General relaxation',
     durationOptions: [3, 5, 10, 15],
   },
-  {
-    id: 'tactical',
-    name: 'Tactical Breathing',
-    description:
-      'A military-grade grounding technique for high-stress moments. Identical rhythm to box breathing, emphasising controlled breath and mental clarity.',
-    phases: { inhale: 4, holdIn: 4, exhale: 4, holdOut: 4 },
-    benefit: 'High-stress grounding',
-    durationOptions: [3, 5, 10, 15],
-  },
+  // {
+  //   id: 'tactical',
+  //   name: 'Tactical Breathing',
+  //   description:
+  //     'A military-grade grounding technique for high-stress moments. Identical rhythm to box breathing, emphasising controlled breath and mental clarity.',
+  //   phases: { inhale: 4, holdIn: 4, exhale: 4, holdOut: 4 },
+  //   benefit: 'High-stress grounding',
+  //   durationOptions: [3, 5, 10, 15],
+  // },
   {
     id: 'slow',
     name: 'Slow Breath',
