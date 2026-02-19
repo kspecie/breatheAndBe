@@ -1,11 +1,14 @@
+import { useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Pause, Play, X } from 'lucide-react'
 import { getPatternById } from '../../data/breathingPatterns'
 import { useBreathingTimer } from '../../hooks/useBreathingTimer'
+import { useAudioStore } from '../../store/audioStore'
 import { BreathingShape } from './BreathingShape'
 import { ProgressBar } from '../../components/ProgressBar'
 import { Button } from '../../components/Button'
+import { AmbientSoundPicker } from '../../components/AmbientSoundPicker'
 
 export function BreathingSession() {
   const { patternId } = useParams<{ patternId: string }>()
@@ -31,7 +34,7 @@ export function BreathingSession() {
   return <SessionView pattern={pattern} durationMinutes={durationMinutes} />
 }
 
-// Separated so the hook only mounts when pattern is valid
+// Separated so hooks only mount when pattern is valid
 function SessionView({
   pattern,
   durationMinutes,
@@ -41,13 +44,21 @@ function SessionView({
 }) {
   const navigate = useNavigate()
   const timer = useBreathingTimer(pattern, durationMinutes)
+  const audio = useAudioStore()
+
+  // Start ambient audio when session mounts; stop on unmount
+  useEffect(() => {
+    audio.play()
+    return () => {
+      audio.stop()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleEnd() {
     navigate('/breathe')
   }
 
   function handleGoAgain() {
-    // Reload the page to reset state cleanly
     window.location.reload()
   }
 
@@ -116,9 +127,16 @@ function SessionView({
         </AnimatePresence>
       </div>
 
-      {/* Bottom controls */}
+      {/* Sound picker */}
       {!timer.isFinished && (
-        <div className="px-6 pb-12 flex items-center justify-center gap-6">
+        <div className="px-6 pb-4">
+          <AmbientSoundPicker />
+        </div>
+      )}
+
+      {/* Pause / End controls */}
+      {!timer.isFinished && (
+        <div className="px-6 pb-10 flex items-center justify-center gap-6">
           <button
             onClick={timer.isRunning ? timer.pause : timer.resume}
             className="w-14 h-14 rounded-full bg-[#E8A87C]/20 flex items-center justify-center text-[#E8A87C] hover:bg-[#E8A87C]/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8A87C]"
