@@ -54,6 +54,8 @@ function SessionView({
     isRunning: timer.isRunning,
     isActive: audio.soundId === 'guided' && audio.isPlaying,
     volume: audio.volume,
+    holdInDuration: pattern.phases.holdIn,
+    holdOutDuration: pattern.phases.holdOut,
   })
 
   // Start ambient audio when session mounts; stop on unmount
