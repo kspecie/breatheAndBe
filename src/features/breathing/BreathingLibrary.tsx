@@ -18,7 +18,7 @@ export function BreathingLibrary() {
             key={pattern.id}
             pattern={pattern}
             onClick={() =>
-              navigate(`/breathe/session/${pattern.id}?duration=5`)
+              navigate(`/breathe/${pattern.id}`)
             }
           />
         ))}

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { HomePage } from './features/home/HomePage'
 import { BreathingLibrary } from './features/breathing/BreathingLibrary'
+import { PatternDetail } from './features/breathing/PatternDetail'
 import { BreathingSession } from './features/breathing/BreathingSession'
 import { MeditationLibrary } from './features/meditation/MeditationLibrary'
 import { HistoryPage } from './features/history/HistoryPage'
@@ -14,6 +15,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="breathe" element={<BreathingLibrary />} />
+          <Route path="breathe/:patternId" element={<PatternDetail />} />
           <Route path="meditate" element={<MeditationLibrary />} />
           <Route path="history" element={<HistoryPage />} />
         </Route>
