@@ -28,6 +28,17 @@ function getGuideCtx(): AudioContext {
   return guideCtx
 }
 
+/**
+ * Call this synchronously inside a user gesture (e.g. a button click handler)
+ * to unlock the guide AudioContext on iOS before the session mounts.
+ * iOS (Safari and Chrome) only allows AudioContext creation/resumption within
+ * a gesture; React useEffect runs after paint and can miss that window.
+ */
+export function primeGuideAudio(): void {
+  const ctx = getGuideCtx()
+  if (ctx.state === 'suspended') ctx.resume()
+}
+
 function getGuideMasterGain(ctx: AudioContext): GainNode {
   if (!guideMasterGain) {
     guideMasterGain = ctx.createGain()

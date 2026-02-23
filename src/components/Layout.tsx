@@ -7,18 +7,16 @@ export function Layout() {
   const location = useLocation()
 
   return (
-    <div className="flex justify-center min-h-dvh">
-      {/* Centered content column — full width on mobile, 480px on desktop */}
-      <div className="w-full max-w-[480px] flex flex-col h-dvh">
-        <main className="flex-1 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            <PageTransition key={location.pathname}>
-              <Outlet />
-            </PageTransition>
-          </AnimatePresence>
-        </main>
-        <BottomNav />
-      </div>
+    <div className="flex flex-col h-dvh overflow-y-auto">
+      {/* Scrollable content — centered, 480px max on desktop */}
+      <main className="flex-1 w-full max-w-[480px] mx-auto">
+        <AnimatePresence mode="wait">
+          <PageTransition key={location.pathname}>
+            <Outlet />
+          </PageTransition>
+        </AnimatePresence>
+      </main>
+      <BottomNav />
     </div>
   )
 }

@@ -5,7 +5,7 @@ export const breathingPatterns: BreathingPattern[] = [
     id: 'box',
     name: 'Box Breathing',
     description:
-      'A simple, balanced pattern used by Navy SEALs and athletes to calm the nervous system and sharpen focus under pressure.',
+      'A simple, balanced pattern used to calm the nervous system and sharpen focus under pressure.',
     phases: { inhale: 4, holdIn: 4, exhale: 4, holdOut: 4 },
     benefit: 'Stress relief & focus',
     durationOptions: [3, 5, 10, 15],
@@ -14,7 +14,7 @@ export const breathingPatterns: BreathingPattern[] = [
     id: '478',
     name: '4-7-8 Breathing',
     description:
-      'Developed by Dr. Andrew Weil, this pattern acts as a natural tranquilliser for the nervous system — ideal before sleep or during acute anxiety.',
+      'Developed by Dr. Andrew Weil, this pattern acts as a natural tranquiliser for the nervous system — ideal before sleep or during acute anxiety.',
     phases: { inhale: 4, holdIn: 7, exhale: 8, holdOut: 0 },
     benefit: 'Anxiety & sleep onset',
     durationOptions: [3, 5, 10, 15],
@@ -28,15 +28,6 @@ export const breathingPatterns: BreathingPattern[] = [
     benefit: 'General relaxation',
     durationOptions: [3, 5, 10, 15],
   },
-  // {
-  //   id: 'tactical',
-  //   name: 'Tactical Breathing',
-  //   description:
-  //     'A military-grade grounding technique for high-stress moments. Identical rhythm to box breathing, emphasising controlled breath and mental clarity.',
-  //   phases: { inhale: 4, holdIn: 4, exhale: 4, holdOut: 4 },
-  //   benefit: 'High-stress grounding',
-  //   durationOptions: [3, 5, 10, 15],
-  // },
   {
     id: 'slow',
     name: 'Slow Breath',

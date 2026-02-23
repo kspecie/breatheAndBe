@@ -35,7 +35,7 @@ export function HomePage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#3D2B1F]">Breathing Exercises</p>
-                <p className="text-sm text-[#8C6E5B]">6 guided patterns</p>
+                <p className="text-sm text-[#8C6E5B]">5 guided patterns</p>
               </div>
               <ChevronRight size={18} className="text-[#8C6E5B] flex-shrink-0" />
             </div>
