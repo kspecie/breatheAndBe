@@ -70,10 +70,10 @@ export function MeditationDetail() {
           <div className="h-8 w-px bg-[#E8A87C]/30" />
           <div className="flex flex-col gap-1">
             <span className="text-sm text-[#3D2B1F]">
-              Guided narration available via text toggle
+              Default view displays text
             </span>
             <span className="text-xs text-[#8C6E5B]">
-              Default view shows a timer — show text anytime
+              No audio narration available currently
             </span>
           </div>
         </div>

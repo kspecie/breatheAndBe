@@ -9,7 +9,6 @@ import { useAudioStore } from '../../store/audioStore'
 import { BreathingShape } from './BreathingShape'
 import { ProgressBar } from '../../components/ProgressBar'
 import { Button } from '../../components/Button'
-import { AmbientSoundPicker } from '../../components/AmbientSoundPicker'
 
 export function BreathingSession() {
   const { patternId } = useParams<{ patternId: string }>()
@@ -142,10 +141,29 @@ function SessionView({
         </AnimatePresence>
       </div>
 
-      {/* Sound picker */}
-      {!timer.isFinished && (
-        <div className="px-6 pb-4">
-          <AmbientSoundPicker />
+      {/* Volume slider — shown when white noise or guided tones is active */}
+      {!timer.isFinished && audio.soundId !== 'silence' && (
+        <div className="px-6 pb-4 flex items-center gap-3 max-w-[240px] mx-auto w-full">
+          <span className="text-xs text-[#8C6E5B]/60 w-14 shrink-0">Volume</span>
+          <input
+            type="range"
+            min={0}
+            max={0.5}
+            step={0.005}
+            value={audio.volume}
+            onChange={(e) => audio.setVolume(Number(e.target.value))}
+            aria-label="Sound volume"
+            className="flex-1 h-1.5 appearance-none rounded-full cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none
+              [&::-webkit-slider-thumb]:w-4
+              [&::-webkit-slider-thumb]:h-4
+              [&::-webkit-slider-thumb]:rounded-full
+              [&::-webkit-slider-thumb]:bg-[#E8A87C]
+              [&::-webkit-slider-track]:rounded-full"
+            style={{
+              background: `linear-gradient(to right, #E8A87C ${audio.volume * 200}%, rgba(232,168,124,0.2) ${audio.volume * 200}%)`,
+            }}
+          />
         </div>
       )}
 

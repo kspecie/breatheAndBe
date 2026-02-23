@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { getPatternById } from '../../data/breathingPatterns'
+import { primeGuideAudio } from '../../hooks/useBreathingGuide'
 import { Card } from '../../components/Card'
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
+import { AmbientSoundPicker } from '../../components/AmbientSoundPicker'
 import type { BreathingPattern } from '../../types'
 
 const PHASE_LABELS: Array<{ key: keyof BreathingPattern['phases']; label: string }> = [
@@ -120,16 +122,25 @@ export function PatternDetail() {
         </div>
       </div>
 
+      {/* Sound selector */}
+      <div>
+        <p className="text-sm font-semibold text-[#8C6E5B] uppercase tracking-wider mb-3">
+          Sound
+        </p>
+        <AmbientSoundPicker showVolume={false} />
+      </div>
+
       {/* Start button */}
       <Button
         variant="primary"
         size="lg"
         fullWidth
-        onClick={() =>
+        onClick={() => {
+          primeGuideAudio()
           navigate(
             `/breathe/session/${pattern.id}?duration=${selectedDuration}`
           )
-        }
+        }}
       >
         Start session
       </Button>

@@ -44,7 +44,7 @@ function SessionView({ meditationId }: { meditationId: string }) {
   const audio = useAudioStore()
   const prefersReducedMotion = useReducedMotion()
 
-  const [showText, setShowText] = useState(false)
+  const [showText, setShowText] = useState(true)
 
   // Start ambient audio on mount; stop on unmount
   useEffect(() => {

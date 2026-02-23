@@ -111,9 +111,10 @@ function startWhiteNoise(ctx: AudioContext, gain: GainNode) {
 
 function startSound(id: SoundId, volume: number) {
   stopAll()
-  if (id === 'silence' || id === 'guided') return
-
+  // Always create/resume the AudioContext — even for guided/silence — so iOS
+  // unlocks audio for the whole page when called from within a user gesture.
   const ctx = getCtx()
+  if (id === 'silence' || id === 'guided') return
   masterGain = ctx.createGain()
   masterGain.gain.value = volume
   masterGain.connect(ctx.destination)

@@ -1,7 +1,7 @@
 import { ambientSounds } from '../data/ambientSounds'
 import { useAudioStore } from '../store/audioStore'
 
-export function AmbientSoundPicker() {
+export function AmbientSoundPicker({ showVolume = true }: { showVolume?: boolean }) {
   const { soundId, volume, setSound, setVolume } = useAudioStore()
 
   return (
@@ -30,8 +30,8 @@ export function AmbientSoundPicker() {
         })}
       </div>
 
-      {/* Volume slider — only shown when a sound is selected */}
-      {soundId !== 'silence' && (
+      {/* Volume slider — only shown when a sound is selected and showVolume is true */}
+      {showVolume && soundId !== 'silence' && (
         <div className="flex items-center gap-3 px-1 max-w-[200px] mx-auto w-full">
           <span className="text-xs text-[#8C6E5B]/60 w-14 shrink-0">Volume</span>
           <input
