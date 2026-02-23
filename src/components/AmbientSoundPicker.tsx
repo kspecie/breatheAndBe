@@ -1,14 +1,15 @@
 import { ambientSounds } from '../data/ambientSounds'
 import { useAudioStore } from '../store/audioStore'
 
-export function AmbientSoundPicker({ showVolume = true }: { showVolume?: boolean }) {
+export function AmbientSoundPicker({ showVolume = true, excludeGuided = false }: { showVolume?: boolean; excludeGuided?: boolean }) {
   const { soundId, volume, setSound, setVolume } = useAudioStore()
+  const sounds = excludeGuided ? ambientSounds.filter((s) => s.id !== 'guided') : ambientSounds
 
   return (
     <div className="flex flex-col gap-3">
       {/* Sound buttons */}
-      <div className="flex gap-2 overflow-x-auto pb-1 px-1 scrollbar-none justify-center">
-        {ambientSounds.map((sound) => {
+      <div className="flex gap-2 px-1">
+        {sounds.map((sound) => {
           const isActive = soundId === sound.id
           return (
             <button
@@ -16,7 +17,7 @@ export function AmbientSoundPicker({ showVolume = true }: { showVolume?: boolean
               onClick={() => setSound(sound.id)}
               aria-pressed={isActive}
               className={[
-                'flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors',
+                'flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full text-sm font-semibold transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8A87C]',
                 isActive
                   ? 'bg-[#E8A87C]/25 text-[#E8A87C] border border-[#E8A87C]/50'

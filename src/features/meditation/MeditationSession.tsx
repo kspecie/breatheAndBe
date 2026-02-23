@@ -193,7 +193,7 @@ function SessionView({ meditationId }: { meditationId: string }) {
       {/* Sound picker */}
       {!timer.isFinished && (
         <div className="px-6 pb-4">
-          <AmbientSoundPicker />
+          <AmbientSoundPicker excludeGuided />
         </div>
       )}
 
